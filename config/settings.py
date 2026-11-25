@@ -184,7 +184,7 @@ IA_ESFUERZO = os.environ.get('IA_ESFUERZO', 'high')
 # ════════════════════════════════════════════════════════════════════════
 
 CORREO_DOMINIO = os.environ.get('CORREO_DOMINIO', 'multiservicios.mx')
-DEFAULT_FROM_EMAIL = os.environ.get('CORREO_REMITENTE', f'Segunda Glosa <glosa@{CORREO_DOMINIO}>')
+DEFAULT_FROM_EMAIL = os.environ.get('CORREO_REMITENTE', f'GlosaAI <glosa@{CORREO_DOMINIO}>')
 
 # Sin servidor SMTP configurado no se aceptan análisis (no tendría a dónde llegar el reporte).
 CORREO_CONFIGURADO = bool(os.environ.get('CORREO_SMTP_HOST'))

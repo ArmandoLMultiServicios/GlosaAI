@@ -30,8 +30,8 @@ class Command(BaseCommand):
         self.stdout.write(f'Enviando correo de prueba a {destinatario}...')
         try:
             EmailMessage(
-                subject='Segunda glosa · Correo de prueba',
-                body='Si recibes este correo, el envío de reportes de Segunda Glosa está bien configurado.',
+                subject='GlosaAI · Correo de prueba',
+                body='Si recibes este correo, el envío de reportes de GlosaAI está bien configurado.',
                 to=[destinatario],
             ).send()
         except Exception as e:

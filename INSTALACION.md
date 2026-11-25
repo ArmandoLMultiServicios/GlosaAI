@@ -10,7 +10,7 @@ marca "Add python.exe to PATH".
 
 ## 1. Copiar el proyecto a la PC
 
-Copia la carpeta `Segunda Glosa` a la PC donde va a correr (USB, carpeta compartida, etc.).
+Copia la carpeta del proyecto a la PC donde va a correr (USB, carpeta compartida, etc.).
 **No copies** la carpeta `.venv` ni `db.sqlite3`; se crean en el paso siguiente. Si es la misma
 PC donde ya lo tienes, salta al paso 3.
 
@@ -18,13 +18,13 @@ Para empaquetarla sin esas carpetas, desde PowerShell en la PC de origen:
 
 ```powershell
 cd "C:\Users\ArmandoL\Documents\GitHub\Segunda Glosa"
-tar -czf segunda-glosa.tgz --exclude=.venv --exclude=__pycache__ --exclude=media --exclude=staticfiles --exclude=db.sqlite3 --exclude=.env --exclude=*.pdf --exclude=.claude .
+tar -czf glosaai.tgz --exclude=.venv --exclude=__pycache__ --exclude=media --exclude=staticfiles --exclude=db.sqlite3 --exclude=.env --exclude=*.pdf --exclude=.claude .
 ```
 
 Y en la PC destino, dentro de la carpeta donde quieras el proyecto (p. ej. `C:\SegundaGlosa`):
 
 ```powershell
-tar -xzf segunda-glosa.tgz
+tar -xzf glosaai.tgz
 ```
 
 ## 2. Crear el entorno e instalar dependencias (PowerShell, en la carpeta del proyecto)
@@ -67,7 +67,7 @@ CORREO_SMTP_PUERTO=587
 CORREO_SMTP_SEGURIDAD=tls
 CORREO_SMTP_USUARIO=glosa@multiservicios.mx
 CORREO_SMTP_CONTRASENA=<contraseña de la cuenta o de aplicación>
-CORREO_REMITENTE=Segunda Glosa <glosa@multiservicios.mx>
+CORREO_REMITENTE=GlosaAI <glosa@multiservicios.mx>
 ```
 
 | Si el correo de la empresa es… | `CORREO_SMTP_HOST` | Puerto | Notas |
@@ -161,7 +161,7 @@ todas las cuentas. Respáldalo de vez en cuando.
    ```
 3. Permite el puerto 8020 en el firewall de Windows (PowerShell **como administrador**):
    ```powershell
-   New-NetFirewallRule -DisplayName "Segunda Glosa" -Direction Inbound -Protocol TCP -LocalPort 8020 -Action Allow -Profile Private
+   New-NetFirewallRule -DisplayName "GlosaAI" -Direction Inbound -Protocol TCP -LocalPort 8020 -Action Allow -Profile Private
    ```
 4. Reinicia `iniciar.bat`. Desde las otras PCs abre `http://192.168.1.50:8020/`.
 
@@ -173,13 +173,13 @@ actualizar `DJANGO_ALLOWED_HOSTS`.
 PowerShell **como administrador**, en la carpeta del proyecto:
 
 ```powershell
-schtasks /Create /TN "Segunda Glosa" /TR "\"$PWD\iniciar.bat\"" /SC ONLOGON /RL LIMITED
+schtasks /Create /TN "GlosaAI" /TR "\"$PWD\iniciar.bat\"" /SC ONLOGON /RL LIMITED
 ```
 
 Arranca cuando inicias sesión. Para quitarlo:
 
 ```powershell
-schtasks /Delete /TN "Segunda Glosa" /F
+schtasks /Delete /TN "GlosaAI" /F
 ```
 
 ---
@@ -218,7 +218,7 @@ del proyecto que ya está instalado:
 
 ```powershell
 git init -b main
-git remote add origin https://github.com/<cuenta>/segunda-glosa.git
+git remote add origin https://github.com/<cuenta>/GlosaAI.git
 git fetch origin
 git reset --hard origin/main
 git branch --set-upstream-to=origin/main main

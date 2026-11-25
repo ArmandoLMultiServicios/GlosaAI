@@ -35,7 +35,7 @@ class OpenAIGPT(Proveedor):
                 input=[{'role': 'user', 'content': [_parte(p) for p in partes]}],
                 reasoning={'effort': self.esfuerzo},
                 max_output_tokens=64000,
-                text={'format': {'type': 'json_schema', 'name': 'segunda_glosa',
+                text={'format': {'type': 'json_schema', 'name': 'glosa_ai',
                                  'schema': esquema, 'strict': True}},
             )
         except openai.AuthenticationError as e:

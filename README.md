@@ -1,6 +1,6 @@
-# Segunda Glosa
+# GlosaAI
 
-Aplicación Django para la segunda glosa de pedimentos. Sueltas el pedimento y la documentación con
+GlosaAI es una aplicación Django para la segunda glosa de pedimentos. Sueltas el pedimento y la documentación con
 la que se elaboró (factura, BL, COVE, certificados de origen, etc.). Un modelo de IA (Claude,
 Gemini u OpenAI, a elegir) busca inconsistencias y el reporte PDF con los hallazgos llega por correo.
 

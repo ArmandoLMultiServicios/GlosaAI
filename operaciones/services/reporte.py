@@ -88,7 +88,7 @@ def generar_reporte(resultado):
     fecha = timezone.localtime().strftime('%d/%m/%Y %H:%M')
 
     story = [
-        Paragraph('Reporte de Segunda Glosa', e['titulo']),
+        Paragraph('GlosaAI · Reporte de glosa', e['titulo']),
         Paragraph(f'Pedimento {escape(pedimento)} · Analizado el {fecha}'
                   + (f' · {escape(r["meta"]["modelo"])}' if r.get('meta', {}).get('modelo') else ''),
                   e['subtitulo']),

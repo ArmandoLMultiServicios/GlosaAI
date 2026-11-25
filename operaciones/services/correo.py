@@ -42,7 +42,7 @@ def enviar_reporte(destinatario, resultado, pdf, nombre_pdf, nombres_archivos):
     total = sum(conteo.values())
     resumen_conteo = ', '.join(f'{n} {SEVERIDADES[s][0].lower()}' for s, n in conteo.items() if n)
 
-    asunto = f'Segunda glosa · Pedimento {pedimento} · {total} hallazgo{"" if total == 1 else "s"}'
+    asunto = f'GlosaAI · Pedimento {pedimento} · {total} hallazgo{"" if total == 1 else "s"}'
     cuerpo = (
         f'Se terminó la revisión del pedimento {pedimento}.\n\n'
         f'Hallazgos: {resumen_conteo or "ninguno"}.\n\n'
@@ -62,7 +62,7 @@ def enviar_error(destinatario, error, nombres_archivos):
         'No se pudo generar el reporte de segunda glosa.\n\n'
         f'Motivo: {error}\n\n'
         f'Documentos que se enviaron:\n{_lista_archivos(nombres_archivos)}\n\n'
-        'Puedes volver a intentarlo desde la página de Segunda Glosa.'
+        'Puedes volver a intentarlo desde la página de GlosaAI.'
     )
-    EmailMessage(subject='Segunda glosa · No se pudo generar el reporte', body=cuerpo,
+    EmailMessage(subject='GlosaAI · No se pudo generar el reporte', body=cuerpo,
                  to=[destinatario]).send()
