@@ -193,14 +193,43 @@ En `iniciar.bat`:
 
 ## Actualizar a una versión nueva
 
-Cierra `iniciar.bat`, reemplaza los archivos del proyecto (sin tocar `.env`, `.venv` ni
-`db.sqlite3`) y luego:
+El código vive en un repositorio privado de GitHub. En el servidor se actualiza con un comando.
+
+### En la PC de desarrollo, cada vez que haya cambios
 
 ```powershell
-.venv\Scripts\python -m pip install -r requirements.txt
-.venv\Scripts\python manage.py migrate
-.\iniciar.bat
+git add -A
+git commit -m "Describe el cambio"
+git push
 ```
+
+### En el servidor
+
+Doble clic en **`actualizar.bat`** (o `.ctualizar.bat` en PowerShell, en la carpeta del
+proyecto). Descarga la versión nueva, instala dependencias y actualiza la base de datos. Luego
+cierra la ventana del servidor y vuelve a abrirla.
+
+`.env`, `db.sqlite3` (los usuarios) y `.venv` no se tocan: no están en GitHub.
+
+### Preparar el servidor la primera vez
+
+Requiere Git para Windows (https://git-scm.com/download/win). En PowerShell, dentro de la carpeta
+del proyecto que ya está instalado:
+
+```powershell
+git init -b main
+git remote add origin https://github.com/<cuenta>/segunda-glosa.git
+git fetch origin
+git reset --hard origin/main
+git branch --set-upstream-to=origin/main main
+```
+
+`git reset --hard` reemplaza el código por el de GitHub. Los archivos que no están en GitHub
+(`.env`, `db.sqlite3`, `.venv`, tu `.bat` de arranque) se quedan como están. La primera vez que
+se conecte, Git pide iniciar sesión en GitHub en una ventana del navegador.
+
+No edites el código directamente en el servidor: el siguiente `actualizar.bat` fallaría. Si algo
+se debe configurar solo en el servidor (IP, llaves, correo), va en su `.env`.
 
 ## Problemas comunes
 
