@@ -1,0 +1,77 @@
+{% extends "operaciones/base.html" %}
+
+{% block titulo %}{% if nuevo %}Nuevo usuario{% else %}{{ usuario.username }}{% endif %}{% endblock %}
+{% block estilos %}{% include "operaciones/usuarios/_estilos.html" %}{% endblock %}
+
+{% block contenido %}
+<div class="card-header">
+  <div class="card-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/>
+      {% if nuevo %}<line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/>{% endif %}
+    </svg>
+  </div>
+  <div>
+    <p class="card-eyebrow"><a href="{% url 'operaciones:usuarios' %}" style="color:inherit;text-decoration:none">Usuarios</a></p>
+    <h1 class="card-title">{% if nuevo %}Agregar usuario{% else %}{{ usuario.username }}{% endif %}</h1>
+    <p class="card-subtitle">
+      {% if nuevo %}Con estos datos la persona inicia sesión; el reporte le llega a su correo.
+      {% else %}Alta: {{ usuario.date_joined|date:"d/m/Y" }} · Último acceso: {% if usuario.last_login %}{{ usuario.last_login|date:"d/m/Y H:i" }}{% else %}nunca{% endif %}{% endif %}
+    </p>
+  </div>
+</div>
+
+{% if form.non_field_errors %}<p class="aviso error">{{ form.non_field_errors|join:" " }}</p>{% endif %}
+
+<form method="post" novalidate>
+  {% csrf_token %}
+  <div class="panel">
+    <div class="panel-header"><span class="panel-title">Datos</span></div>
+    <div class="panel-body dos-columnas">
+      {% if nuevo %}
+        <div style="grid-column: 1 / -1">{% include "operaciones/usuarios/_campo.html" with campo=form.username %}</div>
+      {% endif %}
+      {% include "operaciones/usuarios/_campo.html" with campo=form.first_name %}
+      {% include "operaciones/usuarios/_campo.html" with campo=form.last_name %}
+      <div style="grid-column: 1 / -1">{% include "operaciones/usuarios/_campo.html" with campo=form.email %}</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header"><span class="panel-title">{% if nuevo %}Contraseña{% else %}Cambiar contraseña{% endif %}</span></div>
+    <div class="panel-body dos-columnas">
+      {% if nuevo %}
+        {% include "operaciones/usuarios/_campo.html" with campo=form.password1 %}
+        {% include "operaciones/usuarios/_campo.html" with campo=form.password2 %}
+      {% else %}
+        {% include "operaciones/usuarios/_campo.html" with campo=form.nueva_contrasena %}
+        {% include "operaciones/usuarios/_campo.html" with campo=form.confirmar_contrasena %}
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header"><span class="panel-title">Acceso</span></div>
+    <div class="panel-body">
+      {% if not nuevo %}{% include "operaciones/usuarios/_campo.html" with campo=form.is_active %}{% endif %}
+      {% include "operaciones/usuarios/_campo.html" with campo=form.administrador %}
+    </div>
+  </div>
+
+  <div class="acciones">
+    <button class="btn btn-principal" type="submit">{% if nuevo %}Crear usuario{% else %}Guardar cambios{% endif %}</button>
+    <a class="btn btn-secundario" href="{% url 'operaciones:usuarios' %}">Cancelar</a>
+    {% if not nuevo and usuario.pk != user.pk %}
+      <span class="separador"></span>
+      <button class="btn btn-peligro" type="submit" form="formEliminar">Eliminar usuario</button>
+    {% endif %}
+  </div>
+</form>
+
+{% if not nuevo and usuario.pk != user.pk %}
+<form id="formEliminar" method="post" action="{% url 'operaciones:usuario_eliminar' usuario.pk %}"
+      onsubmit="return confirm('¿Eliminar a {{ usuario.username|escapejs }}? No se puede deshacer. Si solo quieres quitarle el acceso, desmarca Activo.');">
+  {% csrf_token %}
+</form>
+{% endif %}
+{% endblock %}

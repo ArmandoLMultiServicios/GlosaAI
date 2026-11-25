@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta name="csrf-token" content="{{ csrf_token }}">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Multiservicios Agencia Aduanal · {% block titulo %}Segunda Glosa{% endblock %}</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --black:        #111111;
+    --white:        #FFFFFF;
+    --orange:       #FF5500;
+    --gray:         #D8D8D8;
+    --beige:        #F2E9DF;
+    --bg:           #F5F4F2;
+    --border:       var(--gray);
+    --text:         var(--black);
+    --text-muted:   #6B6B6B;
+    --accent:       var(--orange);
+    --accent-light: #FFF0E8;
+    --green:        #1a9e5c;
+    --green-light:  #edfff5;
+    --red:          #9B1A1A;
+    --red-light:    #FFF0F0;
+    --radius:       12px;
+    --shadow:       0 2px 10px rgba(17,17,17,0.07);
+    --shadow-lg:    0 8px 28px rgba(255,85,0,0.14);
+  }
+
+  body { font-family: 'Manrope', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* ─── HEADER ─── */
+  header {
+    background: var(--black); padding: 0 48px; height: 60px;
+    display: flex; align-items: center;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+  .logo-mark {
+    width: 32px; height: 32px; background: var(--orange); border-radius: 6px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .logo-mark svg { width: 18px; height: 18px; color: var(--white); }
+  .logo-text { font-size: 15px; font-weight: 700; color: var(--white); letter-spacing: -0.2px; }
+  .logo-sub  { font-size: 11px; font-weight: 500; color: var(--gray); letter-spacing: 0.4px; text-transform: uppercase; }
+  .sesion { margin-left: auto; display: flex; align-items: center; gap: 18px; }
+  .sesion-nombre { font-size: 13px; font-weight: 600; color: var(--gray); }
+  .sesion a, .sesion button {
+    font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 700; color: var(--white);
+    background: none; border: none; cursor: pointer; text-decoration: none; padding: 0;
+  }
+  .sesion a:hover, .sesion button:hover, .sesion a.activo { color: var(--orange); }
+
+  /* ─── MAIN ─── */
+  main { max-width: 860px; margin: 0 auto; padding: 48px 24px 80px; }
+
+  /* ─── CARD HEADER ─── */
+  .card-header { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 24px; }
+  .card-icon {
+    width: 52px; height: 52px; border-radius: 12px; background: var(--accent-light);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .card-icon svg { width: 26px; height: 26px; color: var(--orange); }
+  .card-eyebrow  { font-size: 11px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--orange); margin-bottom: 3px; }
+  .card-title    { font-size: 26px; font-weight: 800; letter-spacing: -0.6px; line-height: 1.1; }
+  .card-subtitle { color: var(--text-muted); font-size: 14px; font-weight: 500; margin-top: 4px; }
+
+  /* ─── AVISOS (mensajes del servidor) ─── */
+  .aviso {
+    padding: 12px 18px; border-radius: var(--radius); font-size: 13px; font-weight: 600;
+    margin-bottom: 16px; border: 1px solid;
+  }
+  .aviso.success { background: var(--green-light); color: #11683d; border-color: #b4e6cb; }
+  .aviso.error   { background: var(--red-light); color: var(--red); border-color: #EFBCBC; }
+  .aviso.info, .aviso.warning { background: var(--accent-light); color: #8a3a10; border-color: #f6c9ad; }
+
+  @media (max-width: 600px) {
+    header { padding: 0 16px; }
+    main { padding: 28px 16px 60px; }
+    .card-title { font-size: 22px; }
+    .sesion { gap: 12px; }
+    .sesion-nombre { display: none; }
+  }
+</style>
+{% block estilos %}{% endblock %}
+</head>
+<body>
+{% block antes %}{% endblock %}
+
+<header>
+  <a class="logo" href="{% if user.is_authenticated %}{% url 'operaciones:inicio' %}{% else %}https://multiservicios.mx/{% endif %}">
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="16 16 12 12 8 16"/>
+        <line x1="12" y1="12" x2="12" y2="21"/>
+        <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-text">Multiservicios</div>
+      <div class="logo-sub">Agencia Aduanal</div>
+    </div>
+  </a>
+  {% if user.is_authenticated %}
+  {% url 'operaciones:mi_contrasena' as url_mi_contrasena %}
+  {% url 'operaciones:usuarios' as url_usuarios %}
+  <nav class="sesion">
+    <a class="sesion-nombre{% if request.path == url_mi_contrasena %} activo{% endif %}" href="{{ url_mi_contrasena }}"
+       title="Cambiar mi contraseña">{{ user.get_full_name|default:user.username }}</a>
+    {% if user.is_superuser %}<a href="{{ url_usuarios }}"{% if url_usuarios in request.path %} class="activo"{% endif %}>Usuarios</a>{% endif %}
+    <form method="post" action="{% url 'logout' %}">
+      {% csrf_token %}
+      <button type="submit">Cerrar sesión</button>
+    </form>
+  </nav>
+  {% endif %}
+</header>
+
+<main{% block clase_main %}{% endblock %}>
+  {% for mensaje in messages %}
+    <p class="aviso {{ mensaje.tags }}">{{ mensaje }}</p>
+  {% endfor %}
+  {% block contenido %}{% endblock %}
+</main>
+
+{% block final %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,8 @@
+Django>=6.1,<6.2
+anthropic>=1.15
+google-genai>=2.32
+openai>=3.35
+pypdf>=6.0
+reportlab>=5.0
+python-dotenv>=1.0
+waitress>=3.0

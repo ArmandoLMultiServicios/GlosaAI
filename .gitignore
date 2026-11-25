@@ -1,0 +1,17 @@
+# Entorno y archivos generados
+.venv/
+venv/
+__pycache__/
+*.pyc
+staticfiles/
+
+# Datos propios de cada instalación: nunca se suben
+.env
+db.sqlite3
+media/
+
+# Reportes y documentos de clientes
+*.pdf
+
+# Configuración local de Claude Code
+.claude/

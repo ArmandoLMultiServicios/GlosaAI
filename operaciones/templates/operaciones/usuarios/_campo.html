@@ -1,0 +1,17 @@
+{# Un campo de formulario con su etiqueta, ayuda y errores. Uso: include con campo=form.x #}
+<div class="campo{% if campo.errors %} con-error{% endif %}">
+  {% if campo.field.widget.input_type == 'checkbox' %}
+    <label class="interruptor" for="{{ campo.id_for_label }}">
+      {{ campo }}<span class="pista"></span>
+      <span>
+        <span class="texto">{{ campo.label }}</span>
+        {% if campo.help_text %}<span class="campo-ayuda" style="display:block;margin-top:2px">{{ campo.help_text|safe }}</span>{% endif %}
+      </span>
+    </label>
+  {% else %}
+    <label class="etiqueta" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+    {{ campo }}
+    {% if campo.help_text %}<div class="campo-ayuda">{{ campo.help_text|safe }}</div>{% endif %}
+  {% endif %}
+  {% if campo.errors %}<div class="campo-error">{{ campo.errors }}</div>{% endif %}
+</div>

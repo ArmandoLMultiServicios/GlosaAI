@@ -1,0 +1,73 @@
+{% extends "operaciones/base.html" %}
+
+{% block titulo %}Usuarios{% endblock %}
+{% block estilos %}{% include "operaciones/usuarios/_estilos.html" %}{% endblock %}
+
+{% block contenido %}
+<div class="encabezado-acciones">
+  <div class="card-header">
+    <div class="card-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+    </div>
+    <div>
+      <p class="card-eyebrow">Administración</p>
+      <h1 class="card-title">Usuarios</h1>
+      <p class="card-subtitle">Quién puede entrar a Segunda Glosa</p>
+    </div>
+  </div>
+  <a class="btn btn-naranja" href="{% url 'operaciones:usuario_nuevo' %}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+    Agregar usuario
+  </a>
+</div>
+
+<form class="buscador" method="get">
+  <input type="search" name="q" value="{{ busqueda }}" placeholder="Buscar por usuario, nombre o correo" aria-label="Buscar">
+  <button class="btn btn-secundario" type="submit">Buscar</button>
+  {% if busqueda %}<a class="btn btn-secundario" href="{% url 'operaciones:usuarios' %}">Ver todos</a>{% endif %}
+</form>
+
+<div class="panel">
+  <div class="panel-header">
+    <span class="panel-title">{% if busqueda %}Resultados{% else %}Todos los usuarios{% endif %}</span>
+    <span class="panel-count">{{ usuarios|length }}</span>
+  </div>
+  {% if usuarios %}
+  <table class="tabla">
+    <thead>
+      <tr>
+        <th>Usuario</th>
+        <th class="col-opcional">Correo</th>
+        <th>Estado</th>
+        <th class="col-opcional">Último acceso</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in usuarios %}
+      {% url 'operaciones:usuario_editar' u.pk as url_editar %}
+      <tr class="{% if not u.is_active %}inactivo{% endif %}" onclick="location.href='{{ url_editar }}'">
+        <td>
+          <a href="{{ url_editar }}">{{ u.username }}</a>{% if u.pk == user.pk %} <span class="secundario">(tú)</span>{% endif %}
+          {% if u.get_full_name %}<div class="secundario">{{ u.get_full_name }}</div>{% endif %}
+        </td>
+        <td class="col-opcional">{{ u.email|default:"—" }}</td>
+        <td>
+          <span class="etiqueta-estado {% if u.is_active %}activo{% else %}inactivo{% endif %}">{% if u.is_active %}Activo{% else %}Sin acceso{% endif %}</span>
+          {% if u.is_superuser %}<span class="etiqueta-estado admin">Administrador</span>{% endif %}
+          {% if u.perfil.contrasena_temporal %}<span class="etiqueta-estado inactivo" title="Aún no elige su propia contraseña">Contraseña temporal</span>{% endif %}
+        </td>
+        <td class="col-opcional secundario">{% if u.last_login %}{{ u.last_login|date:"d/m/Y H:i" }}{% else %}Nunca{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="vacio">{% if busqueda %}Ningún usuario coincide con «{{ busqueda }}».{% else %}Aún no hay usuarios.{% endif %}</p>
+  {% endif %}
+</div>
+{% endblock %}
