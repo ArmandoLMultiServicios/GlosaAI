@@ -9,6 +9,15 @@ set PUERTO=8020
 
 cd /d "%~dp0"
 
+rem Para cambiar la IP o el puerto no edites este archivo (se reemplaza al actualizar):
+rem pon SERVIDOR_HOST=... y/o SERVIDOR_PUERTO=... en el .env
+if exist ".env" (
+    for /f "usebackq eol=# tokens=1,* delims==" %%a in (".env") do (
+        if /i "%%a"=="SERVIDOR_HOST" set HOST=%%b
+        if /i "%%a"=="SERVIDOR_PUERTO" set PUERTO=%%b
+    )
+)
+
 rem El entorno virtual puede llamarse .venv o venv.
 set PYTHON=
 if exist ".venv\Scripts\python.exe" set PYTHON=.venv\Scripts\python.exe
