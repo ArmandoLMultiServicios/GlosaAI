@@ -10,7 +10,7 @@ from django.urls import reverse
 from pypdf import PdfReader
 from reportlab.pdfgen import canvas
 
-from .services import analizador, trabajos
+from .services import analizador, control_riesgos, trabajos
 from .services.analizador import (ESQUEMA_RESULTADO, SYSTEM_PROMPT, Archivo, construir_contenido,
                                   detectar_pedimento, normalizar_lista)
 from .services.criterios import IDS_VERIFICACION, LISTA_VERIFICACION
@@ -41,6 +41,19 @@ RESULTADO = {
         {'punto': 'tipo_cambio', 'resultado': 'no_verificable', 'detalle': 'Sin DOF'},
     ]),
     'conclusion': 'Se recomienda rectificar.',
+    'control_riesgos': control_riesgos.normalizar({
+        'encabezado': {'referencia': 'MS-1234', 'contenedores': True, 'cantidad_contenedores': '2',
+                       'carga_suelta': False, 'importador': 'IMPORTADORA SA DE CV',
+                       'valor_factura': '51,743.00 USD'},
+        'partidas': [{'partida': '1', 'fraccion': '6109.10.01', 'tasa_igi': 25, 'valor_aduana': 500000},
+                     {'partida': '2', 'fraccion': '8471.30.01', 'tasa_igi': 0, 'valor_aduana': 450000}],
+        'respuestas': [
+            {'pregunta': 'nom_etiquetado', 'respuesta': 'si', 'detalle': 'NOM-004 en partida 1',
+             'solicitar': ''},
+            {'pregunta': 'csf_mes', 'respuesta': 'no_verificable', 'detalle': 'No se proporcionó',
+             'solicitar': 'CSF del mes en curso'},
+        ],
+    }, '18.42500'),
 }
 
 
@@ -296,6 +309,8 @@ class GlosaTests(TestCase):
         self.assertIn('1 alta, 1 baja', correo.body)
         self.assertIn('FAC.pdf', correo.body)
         self.assertIn('claude-opus-5-5', correo.body)
+        self.assertIn('riesgo de valor (art. 165): pasa', correo.body)
+        self.assertIn('• CSF del mes en curso', correo.body)
         nombre, contenido, tipo = correo.attachments[0]
         self.assertEqual((nombre, tipo), ('Glosa_265116986000855.pdf', 'application/pdf'))
         self.assertTrue(contenido.startswith(b'%PDF'))
@@ -410,6 +425,63 @@ class GlosaTests(TestCase):
         texto = '\n'.join(p.extract_text() for p in PdfReader(BytesIO(pdf)).pages)
         self.assertIn('Lista de verificación', texto)
         self.assertIn('Discrepancia', texto)
+
+    def test_riesgo_de_valor_coincide_con_la_tabla_del_formato(self):
+        tabla = {f['tasa']: f for f in control_riesgos.tabla_valor()}
+        # Valores del formato en papel (importe máximo $374,610, IVA+DTA 16.93 %, referencia 35 %).
+        for tasa, valor in [(0, 721374.93), (5, 798231.41), (10, 893417.60), (15, 1014378.55),
+                            (20, 1173222.67), (25, 1391050.87), (30, 1708207.93)]:
+            self.assertAlmostEqual(tabla[tasa]['valor_maximo'], valor, delta=1)
+
+    def test_riesgo_de_valor_por_partida(self):
+        rv = RESULTADO['control_riesgos']['riesgo_valor']
+        # 500,000 × (16.93 % + 10 %) + 450,000 × (16.93 % + 35 %) = 134,650 + 233,685
+        self.assertAlmostEqual(rv['omision'], 368335, delta=0.01)
+        self.assertTrue(rv['pasa'])
+        self.assertEqual(rv['tasas'], [0, 25])
+        no_pasa = control_riesgos.calcular_riesgo_valor(
+            [{'partida': '1', 'fraccion': 'x', 'tasa_igi': 0, 'valor_aduana': 721400}])
+        self.assertFalse(no_pasa['pasa'])
+        sin_datos = control_riesgos.calcular_riesgo_valor([{'tasa_igi': None, 'valor_aduana': 'abc'}])
+        self.assertFalse(sin_datos['evaluado'])
+        self.assertIsNone(sin_datos['pasa'])
+
+    @override_settings(RIESGO_IMPORTE_MAXIMO_OMISION=100000)
+    def test_importe_maximo_configurable(self):
+        rv = control_riesgos.calcular_riesgo_valor(
+            [{'partida': '1', 'fraccion': 'x', 'tasa_igi': 0, 'valor_aduana': 200000}])
+        self.assertFalse(rv['pasa'])
+        self.assertEqual(rv['importe_maximo'], 100000)
+
+    def test_control_de_riesgos_normaliza_las_respuestas(self):
+        respuestas = RESULTADO['control_riesgos']['respuestas']
+        self.assertEqual([r['pregunta'] for r in respuestas], control_riesgos.IDS_PREGUNTAS)
+        por_id = {r['pregunta']: r for r in respuestas}
+        self.assertEqual(por_id['nom_etiquetado']['respuesta'], 'si')
+        self.assertEqual(por_id['contrato']['respuesta'], 'no_verificable')
+        vacio = control_riesgos.normalizar(None)
+        self.assertEqual(len(vacio['respuestas']), len(control_riesgos.IDS_PREGUNTAS))
+        self.assertFalse(vacio['riesgo_valor']['evaluado'])
+
+    def test_reporte_incluye_la_hoja_de_control_de_riesgos(self):
+        lector = PdfReader(BytesIO(generar_reporte(RESULTADO)))
+        ultima = '\n'.join(p.extract_text() for p in lector.pages[1:])
+        self.assertIn('Revisión de control de riesgos del embarque', ultima)
+        self.assertIn('Riesgo de valor: PASA', ultima)
+        self.assertIn('CSF del mes en curso', ultima)
+        self.assertIn('721,374.93', ultima)
+        sin_hoja = {k: v for k, v in RESULTADO.items() if k != 'control_riesgos'}
+        texto = '\n'.join(p.extract_text() for p in PdfReader(BytesIO(generar_reporte(sin_hoja))).pages)
+        self.assertNotIn('control de riesgos', texto)
+
+    def test_prompt_y_esquema_cubren_el_control_de_riesgos(self):
+        for id_ in control_riesgos.IDS_PREGUNTAS:
+            self.assertIn(f'[{id_}]', SYSTEM_PROMPT)
+        props = ESQUEMA_RESULTADO['properties']['control_riesgos']['properties']
+        self.assertEqual(props['respuestas']['items']['properties']['pregunta']['enum'],
+                         control_riesgos.IDS_PREGUNTAS)
+        self.assertIn('control_riesgos', ESQUEMA_RESULTADO['required'])
+        self.assertIn('Fecha de hoy', construir_contenido([Archivo('e.pdf', PDF_MINIMO)])[-1].texto)
 
     def test_prompt_y_esquema_cubren_la_lista(self):
         for id_, titulo, _ in LISTA_VERIFICACION:

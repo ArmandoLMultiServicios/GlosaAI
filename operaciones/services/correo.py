@@ -34,6 +34,26 @@ def _lista_archivos(nombres):
     return '\n'.join(f'  • {n}' for n in nombres)
 
 
+def _resumen_control_riesgos(control):
+    """Veredicto del riesgo de valor y documentos a solicitar, para el cuerpo del correo."""
+    if not control:
+        return ''
+    rv = control.get('riesgo_valor') or {}
+    if not rv.get('evaluado'):
+        riesgo = 'no verificable (revisa la tabla en el reporte)'
+    elif rv['pasa']:
+        riesgo = f"pasa (omisión estimada $ {rv['omision']:,.2f} de un máximo de $ {rv['importe_maximo']:,.2f})"
+    else:
+        riesgo = (f"NO PASA: omisión estimada $ {rv['omision']:,.2f} rebasa el máximo de "
+                  f"$ {rv['importe_maximo']:,.2f}. Notificar al gerente")
+    texto = f'Control de riesgos · riesgo de valor (art. 165): {riesgo}.\n'
+    pedir = [r['solicitar'].strip() for r in control.get('respuestas', [])
+             if (r.get('solicitar') or '').strip()]
+    if pedir:
+        texto += 'Por favor solicitar:\n' + _lista_archivos(pedir) + '\n'
+    return texto + '\n'
+
+
 def enviar_reporte(destinatario, resultado, pdf, nombre_pdf, nombres_archivos):
     pedimento = resultado.get('datos_pedimento', {}).get('numero_pedimento') or 'sin número'
     conteo = {s: 0 for s in ORDEN_SEVERIDAD}
@@ -46,6 +66,7 @@ def enviar_reporte(destinatario, resultado, pdf, nombre_pdf, nombres_archivos):
     cuerpo = (
         f'Se terminó la revisión del pedimento {pedimento}.\n\n'
         f'Hallazgos: {resumen_conteo or "ninguno"}.\n\n'
+        f'{_resumen_control_riesgos(resultado.get("control_riesgos"))}'
         f'Resumen:\n{resultado.get("resumen", "")}\n\n'
         f'El reporte completo va adjunto ({nombre_pdf}).\n\n'
         f'Documentos analizados:\n{_lista_archivos(nombres_archivos)}\n\n'

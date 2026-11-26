@@ -10,10 +10,12 @@ from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
 
+from django.utils import timezone
 from pypdf import PdfReader
 
 from .criterios import (CRITERIOS_SEVERIDAD, IDS_VERIFICACION, RESULTADOS, TOLERANCIAS,
                         texto_lista_verificacion, texto_reglas_documentos)
+from . import control_riesgos
 from .proveedores import Documento, ErrorAnalisis, Texto, obtener_proveedor
 
 SYSTEM_PROMPT = f"""\
@@ -57,6 +59,8 @@ TOLERANCIAS:
 
 {texto_reglas_documentos()}
 
+{control_riesgos.texto_instrucciones()}
+
 Sé preciso: cita el valor exacto del pedimento y el del documento, e identifica el archivo de \
 origen. No supongas datos que no estén en los documentos. Responde todo en español.
 """
@@ -65,7 +69,7 @@ ESQUEMA_RESULTADO = {
     'type': 'object',
     'additionalProperties': False,
     'required': ['resumen', 'datos_pedimento', 'documentos', 'lista_verificacion', 'hallazgos',
-                 'conclusion'],
+                 'conclusion', 'control_riesgos'],
     'properties': {
         'resumen': {'type': 'string', 'description': 'Resumen ejecutivo de la revisión.'},
         'datos_pedimento': {
@@ -133,6 +137,7 @@ ESQUEMA_RESULTADO = {
             },
         },
         'conclusion': {'type': 'string'},
+        'control_riesgos': control_riesgos.ESQUEMA,
     },
 }
 
@@ -233,6 +238,8 @@ def construir_contenido(archivos, pedimento=None):
             'Un archivo puede contener varios documentos (p. ej. el pedimento junto con la factura '
             'y el BL): identifícalos por página y regístralos por separado en `documentos`, con '
             'las páginas en `archivo`.\n')
+    hoy = timezone.localdate().strftime('%d/%m/%Y')
+    instrucciones += f'Fecha de hoy: {hoy}.\n'
     instrucciones += (
         'Busca inconsistencias entre la información contenida en el pedimento y el resto de la '
         'documentación. Toma en cuenta que el pedimento está en pesos mexicanos y el resto de la '
@@ -271,6 +278,8 @@ def analizar(archivos, pedimento=None, proveedor=None):
         raise ErrorAnalisis('El modelo devolvió una respuesta con formato inválido; intenta de nuevo.') from e
     resultado['lista_verificacion'] = normalizar_lista(resultado.get('lista_verificacion', []))
     resultado.setdefault('hallazgos', [])
+    resultado['control_riesgos'] = control_riesgos.normalizar(
+        resultado.get('control_riesgos'), resultado.get('datos_pedimento', {}).get('tipo_cambio'))
     resultado['meta'] = {
         'proveedor': proveedor.nombre,
         'modelo': respuesta.modelo,

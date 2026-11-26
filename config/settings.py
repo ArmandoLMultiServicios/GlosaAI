@@ -207,6 +207,18 @@ if os.environ.get('CORREO_SMTP_HOST') == 'consola':
     MAILERS['default'] = {'BACKEND': 'django.core.mail.backends.console.EmailBackend'}
 
 
+# ════════════════════════════════════════════════════════════════════════
+#  CONTROL DE RIESGOS DEL EMBARQUE (hoja adicional del reporte)
+#  Riesgo de valor, art. 165 fracc. II inciso a) de la Ley Aduanera: se estima lo que se
+#  omitiría si la mercancía debiera pagar la tasa de referencia, y se compara contra el
+#  importe máximo de omisión. Actualiza el importe cuando cambie (también desde .env).
+# ════════════════════════════════════════════════════════════════════════
+
+RIESGO_IMPORTE_MAXIMO_OMISION = float(os.environ.get('RIESGO_IMPORTE_MAXIMO_OMISION', '374610'))
+RIESGO_TASA_REFERENCIA = 35      # % de IGI del peor caso
+RIESGO_IVA_DTA = 16.93           # % de IVA + DTA sobre el valor (16 % × 1.008 + 0.8 %)
+
+
 # Credenciales: solo hace falta la del proveedor que uses.
 ANTHROPIC_WORKSPACE_ID = os.environ.get('ANTHROPIC_WORKSPACE_ID', '')   # la llave: ANTHROPIC_API_KEY
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
