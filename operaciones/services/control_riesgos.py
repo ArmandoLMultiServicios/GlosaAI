@@ -12,45 +12,45 @@ from django.conf import settings
 
 # (id, título de la sección, nota, [(id_pregunta, pregunta)])
 SECCIONES = [
-    ('documentos_compra', 'Documentos de la compra', '', [
+    ('documentos_compra', 'DATOS GENERALES Y DOCUMENTOS DE LA COMPRA', '', [
         ('comprobante_pago', 'Anexa el comprobante de pago al proveedor (indica el importe)'),
         ('orden_compra', 'La orden de compra del proveedor cuadra con el valor y el precio unitario'),
         ('contrato', 'Presentó contrato de compra-venta del proveedor y coinciden nombres y datos'),
     ]),
-    ('etiquetado', '2. Riesgo del art. 165 fracc. II inciso b) · Etiquetado', '', [
+    ('etiquetado', '2.- REVISION DE RIESGO DEL ART. 165 FRACCION II INCISO b)', 'Sobre el ETIQUETADO', [
         ('nom_etiquetado', 'Lleva NOMs de etiquetado (NOM-050, NOM-024, NOM-051 u otras; indica cuáles)'),
         ('telas_carta', 'Son telas y presenta la carta, y coincide con la factura'),
         ('listado_no_previo', 'Está en el listado de no previo'),
         ('previo_origen', 'Presentaron previo de origen legible'),
         ('uvnom', 'Se debe solicitar al cliente la UVNOM o hacer previo en puerto'),
     ]),
-    ('seguridad', '3. Riesgo del art. 165 fracc. II inciso b) · NOMs de seguridad', '', [
+    ('seguridad', '3.- REVISION DE RIESGO DEL ART. 165 FRACCION II INCISO b)', 'Sobre NOMS de seguridad', [
         ('nom_seguridad', 'Lleva NOMs de seguridad (NOM-001, NOM-003, NOM-084 u otras; indica cuáles) '
                           'y se presentó el certificado o documento que las ampara'),
     ]),
-    ('permisos', '4. Riesgo del art. 165 fracc. II inciso b) · Permisos C1', '', [
+    ('permisos', '4.- REVISION DE RIESGO DEL ART. 165 FRACCION II INCISO b)', 'Sobre PERMISOS C1', [
         ('son_telas', 'Son telas'),
         ('textiles_varios', 'Son productos textiles varios'),
         ('permisos_c1', 'Presentó los permisos C1 (si no, deberán solicitarlos)'),
     ]),
-    ('importador', '5. Riesgo del importador', 'Se revisa con el área legal', [
+    ('importador', '5.- REVISION DE RIESGO DEL IMPORTADOR', 'Se revisa con Area Legal', [
         ('csf_mes', 'Se tiene la Constancia de Situación Fiscal (CSF) del mes en curso'),
         ('csf_giro', 'La CSF coincide con el giro declarado (es congruente con la mercancía)'),
         ('opinion_cumplimiento', 'Se tiene la Opinión de Cumplimiento del mes en curso y es positiva'),
         ('datos_importador', 'Los datos del importador (RFC, razón social, domicilio) son exactos '
                              'entre pedimento, factura, CSF y demás documentos'),
     ]),
-    ('vinculacion', '6. Vinculación del importador', '', [
+    ('vinculacion', '6.- REVISION DEL TEMA DE VINCULACION DEL IMPORTADOR', '', [
         ('vinculacion_declarada', 'Se declara vinculación'),
         ('vinculacion_documento', 'Hay un documento que compruebe la vinculación (indica cuál)'),
     ]),
-    ('preferencia', '7. Preferencia arancelaria y cuota compensatoria', '', [
+    ('preferencia', '7.- REVISION DEL TEMA DE PREFERENCIA ARANCELARIA Y CUOTA COMPENSATORIA', '', [
         ('preferencia_declarada', 'Se declara alguna preferencia arancelaria'),
         ('preferencia_certificado', 'Anexa el certificado de origen'),
         ('cuota_declarada', 'Se declara cuota compensatoria'),
         ('cuota_certificado', 'Anexa el certificado del Anexo VIII'),
     ]),
-    ('mve', '8. Manifestación de Valor Electrónica', '', [
+    ('mve', '8.- PARA LA MANIFESTACION DE VALOR ELECTRONICA DE ADUANA', '', [
         ('mve_incrementables', 'La factura desglosa los gastos incrementables (flete, seguro, otros gastos; '
                                'indica cuáles) para digitalizarla en la Manifestación de Valor'),
         ('mve_comprobante', 'Hay comprobante de la fecha de pago de los gastos incrementables'),
@@ -59,6 +59,13 @@ SECCIONES = [
 
 PREGUNTAS = {id_: texto for _, _, _, preguntas in SECCIONES for id_, texto in preguntas}
 IDS_PREGUNTAS = list(PREGUNTAS)
+
+# Preguntas con casillas de opciones en el formato. La IA marca en `opciones` las que apliquen.
+OPCIONES = {
+    'nom_etiquetado': ['NOM-050', 'NOM-024', 'NOM-051'],
+    'nom_seguridad': ['NOM-001', 'NOM-003', 'NOM-084'],
+    'mve_incrementables': ['FLETE', 'SEGURO', 'OTROS GASTOS'],
+}
 
 RESPUESTAS = {
     'si': 'Sí',
@@ -156,6 +163,7 @@ está en los documentos (p. ej. el listado de no previo o un documento que no se
 puede saber si existe); no_aplica si la pregunta no corresponde a la operación (p. ej. el \
 certificado de origen cuando no hay preferencia). En `detalle` anota la evidencia (documento, \
 página, NOM, importe). En `solicitar` anota qué documento hay que pedir al cliente; vacío si nada.
+  En `opciones` anota: para nom_etiquetado y nom_seguridad, cada NOM que lleva la mercancía con su clave corta (p. ej. "NOM-050", "NOM-004"); para mve_incrementables, cuáles de "FLETE", "SEGURO" y "OTROS GASTOS" vienen desglosados en la factura. Para las demás preguntas deja la lista vacía.
 - "Mes en curso" es el mes de la fecha de hoy que se indica en el mensaje.\
 """
 
@@ -199,12 +207,14 @@ ESQUEMA = {
             'items': {
                 'type': 'object',
                 'additionalProperties': False,
-                'required': ['pregunta', 'respuesta', 'detalle', 'solicitar'],
+                'required': ['pregunta', 'respuesta', 'detalle', 'solicitar', 'opciones'],
                 'properties': {
                     'pregunta': {'type': 'string', 'enum': IDS_PREGUNTAS},
                     'respuesta': {'type': 'string', 'enum': list(RESPUESTAS)},
                     'detalle': {'type': 'string'},
                     'solicitar': {'type': 'string', 'description': 'Documento a pedir al cliente; vacío si nada.'},
+                    'opciones': {'type': 'array', 'items': {'type': 'string'},
+                                 'description': 'NOMs o incrementables marcados; vacío si no aplica.'},
                 },
             },
         },
@@ -220,7 +230,8 @@ def normalizar(control, tipo_cambio=None):
         por_id.setdefault(r.get('pregunta'), r)
     control['respuestas'] = [
         por_id.get(id_) or {'pregunta': id_, 'respuesta': 'no_verificable',
-                            'detalle': 'El análisis no evaluó esta pregunta.', 'solicitar': ''}
+                            'detalle': 'El análisis no evaluó esta pregunta.', 'solicitar': '',
+                            'opciones': []}
         for id_ in IDS_PREGUNTAS]
     control.setdefault('encabezado', {})
     control['riesgo_valor'] = calcular_riesgo_valor(control.get('partidas'), tipo_cambio)

@@ -49,7 +49,9 @@ RESULTADO = {
                      {'partida': '2', 'fraccion': '8471.30.01', 'tasa_igi': 0, 'valor_aduana': 450000}],
         'respuestas': [
             {'pregunta': 'nom_etiquetado', 'respuesta': 'si', 'detalle': 'NOM-004 en partida 1',
-             'solicitar': ''},
+             'solicitar': '', 'opciones': ['NOM-004-SE-2021', 'NOM-050']},
+            {'pregunta': 'mve_incrementables', 'respuesta': 'si', 'detalle': 'Factura desglosa flete',
+             'solicitar': '', 'opciones': ['FLETE']},
             {'pregunta': 'csf_mes', 'respuesta': 'no_verificable', 'detalle': 'No se proporcionó',
              'solicitar': 'CSF del mes en curso'},
         ],
@@ -466,13 +468,14 @@ class GlosaTests(TestCase):
     def test_reporte_incluye_la_hoja_de_control_de_riesgos(self):
         lector = PdfReader(BytesIO(generar_reporte(RESULTADO)))
         ultima = '\n'.join(p.extract_text() for p in lector.pages[1:])
-        self.assertIn('Revisión de control de riesgos del embarque', ultima)
-        self.assertIn('Riesgo de valor: PASA', ultima)
+        self.assertIn('REVISION DE CONTROL DE RIESGOS DEL EMBARQUE', ultima)
+        self.assertIn('SI Pasa', ultima)
+        self.assertIn('NOM-004-SE-2021', ultima)
         self.assertIn('CSF del mes en curso', ultima)
         self.assertIn('721,374.93', ultima)
         sin_hoja = {k: v for k, v in RESULTADO.items() if k != 'control_riesgos'}
         texto = '\n'.join(p.extract_text() for p in PdfReader(BytesIO(generar_reporte(sin_hoja))).pages)
-        self.assertNotIn('control de riesgos', texto)
+        self.assertNotIn('CONTROL DE RIESGOS', texto)
 
     def test_prompt_y_esquema_cubren_el_control_de_riesgos(self):
         for id_ in control_riesgos.IDS_PREGUNTAS:

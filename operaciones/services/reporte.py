@@ -41,16 +41,6 @@ ETIQUETAS_PEDIMENTO = [
     ('peso_bruto', 'Peso bruto'), ('bultos', 'Bultos'), ('medio_transporte', 'Transporte'),
 ]
 
-COLORES_RESPUESTA = {
-    'si': colors.HexColor('#111827'),
-    'no': colors.HexColor('#111827'),
-    'no_verificable': colors.HexColor('#b45309'),
-    'no_aplica': colors.HexColor('#6b7280'),
-}
-VERDE = colors.HexColor('#15803d')
-ROJO = colors.HexColor('#dc2626')
-NARANJA = colors.HexColor('#ff5500')
-NARANJA_CLARO = colors.HexColor('#fff0e8')
 
 AZUL = colors.HexColor('#1e3a5f')
 GRIS_CLARO = colors.HexColor('#f3f4f6')
@@ -208,145 +198,258 @@ def generar_reporte(resultado):
     return buffer.getvalue()
 
 
-# ─── Hoja de control de riesgos del embarque ───
-
 def _pesos(valor):
     return f'$ {valor:,.2f}'
 
 
-def _tabla_preguntas(items, e, ancho):
-    filas = [[_p('Pregunta', e['blanco']), _p('Respuesta', e['blanco']), _p('Evidencia', e['blanco'])]]
-    for item in items:
-        clave = item.get('respuesta')
-        estilo = ParagraphStyle('respuesta', parent=e['celda_b'],
-                                textColor=COLORES_RESPUESTA.get(clave, COLORES_RESPUESTA['no_verificable']))
-        filas.append([_p(cr.PREGUNTAS.get(item.get('pregunta'), item.get('pregunta')), e['celda']),
-                      _p(cr.RESPUESTAS.get(clave, clave), estilo),
-                      _p(item.get('detalle'), e['celda'])])
-    t = Table(filas, colWidths=[ancho * 0.38, ancho * 0.14, ancho * 0.48], repeatRows=1)
-    t.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), AZUL),
-                           ('GRID', (0, 0), (-1, -1), 0.3, colors.HexColor('#d1d5db')),
-                           ('VALIGN', (0, 0), (-1, -1), 'TOP')]))
+# ─── Hoja de control de riesgos del embarque ───
+# Sigue el diseño del formato en papel de la agencia: renglones con casillas ( X ) SI ( ) NO y
+# datos sobre línea. Lo que llena el sistema va en azul (como escrito a mano) y la evidencia en
+# letra chica debajo de cada renglón.
+
+TINTA = '#1e3a5f'
+
+ETIQUETAS_FORMATO = {
+    'comprobante_pago': 'ANEXA IMPORTE DEL COMPROBANTE DE PAGO AL PROVEEDOR',
+    'orden_compra': 'ORDEN DE COMPRA DEL PROVEEDOR CUADRA CON VALOR Y PRECIO UNITARIO',
+    'contrato': 'PRESENTO CONTRATO DE COMPRA-VENTA DEL PROVEEDOR, COINCIDEN NOMBRES Y DATOS',
+    'nom_etiquetado': 'LLEVA NOMS DE ETIQUETADO',
+    'telas_carta': 'SON TELAS Y PRESENTA LA CARTA Y COINCIDE CON LA FACTURA',
+    'listado_no_previo': 'ESTA EN EL LISTADO DE NO PREVIO',
+    'previo_origen': 'PRESENTARON YA PREVIO DE ORIGEN LEGIBLE',
+    'uvnom': 'SOLICITAR AL CLIENTE LA UVNOM / SE HACE PREVIO EN PUERTO',
+    'nom_seguridad': 'LLEVA NOMS DE SEGURIDAD',
+    'son_telas': 'SON TELAS',
+    'textiles_varios': 'SON PRODUCTOS TEXTILES VARIOS',
+    'permisos_c1': 'PRESENTO PERMISOS C1 (SI NO, DEBERAN SOLICITARLOS)',
+    'csf_mes': 'TENEMOS LA CSF DEL MES EN CURSO',
+    'csf_giro': 'LA CSF COINCIDE CON EL GIRO DECLARADO',
+    'opinion_cumplimiento': 'OPINION DE CUMPLIMIENTO DEL MES EN CURSO',
+    'datos_importador': 'REVISE DATOS EXACTOS DEL IMPORTADOR',
+    'vinculacion_declarada': 'SE DECLARA VINCULACION',
+    'vinculacion_documento': 'DOCUMENTO QUE LO COMPRUEBA',
+    'preferencia_declarada': 'SE DECLARA ALGUNA PREFERENCIA ARANCELARIA',
+    'preferencia_certificado': 'ANEXA CERTIFICADO',
+    'cuota_declarada': 'SE DECLARA CUOTA COMPENSATORIA',
+    'cuota_certificado': 'ANEXA CERTIFICADO ANEXO VIII',
+    'mve_incrementables': '1.- FACTURA CON DESGLOSE DE LOS GASTOS INCREMENTABLES '
+                          '(SE DIGITALIZA EN LA MANIFESTACION DE VALOR)',
+    'mve_comprobante': '2.- COMPROBANTE DE FECHA DE PAGO DE LOS GASTOS INCREMENTABLES',
+}
+
+
+def _estilos_formato():
+    base = getSampleStyleSheet()['Normal']
+
+    def estilo(nombre, **kw):
+        return ParagraphStyle(nombre, parent=base, **{'fontName': 'Helvetica', 'fontSize': 8.5,
+                                                      'leading': 11, **kw})
+
+    return {
+        'titulo': estilo('f_titulo', fontName='Helvetica-Bold', fontSize=14, leading=18),
+        'seccion': estilo('f_seccion', fontName='Helvetica-Bold', fontSize=9),
+        'nota': estilo('f_nota', fontName='Helvetica-Bold', fontSize=9, alignment=2),
+        'texto': estilo('f_texto'),
+        'negrita': estilo('f_negrita', fontName='Helvetica-Bold'),
+        'tinta': estilo('f_tinta', fontName='Helvetica-Bold', textColor=colors.HexColor(TINTA)),
+        'evidencia': estilo('f_evidencia', fontName='Helvetica-Oblique', fontSize=7, leading=9,
+                            textColor=colors.HexColor('#6b7280'), leftIndent=12),
+        'tabla': estilo('f_tabla', fontSize=7.5, leading=9, alignment=2),
+        'tabla_izq': estilo('f_tabla_izq', fontSize=7.5, leading=9),
+        'tabla_b': estilo('f_tabla_b', fontName='Helvetica-Bold', fontSize=7.5, leading=9, alignment=2),
+    }
+
+
+def _tinta(texto):
+    return f'<font color="{TINTA}"><b>{escape(str(texto))}</b></font>'
+
+
+def _casilla(marcada):
+    return f'( {_tinta("X")} )' if marcada else '(&nbsp;&nbsp;&nbsp;)'
+
+
+def _aviso(respuesta):
+    if respuesta == 'no_verificable':
+        return ' &nbsp;<font size="7" color="#b45309"><b>NO VERIFICABLE</b></font>'
+    if respuesta == 'no_aplica':
+        return ' &nbsp;<font size="7" color="#6b7280"><b>NO APLICA</b></font>'
+    return ''
+
+
+def _renglon(celdas, anchos, subrayar=(), arriba=3):
+    """Un renglón del formato; las columnas en `subrayar` llevan la línea donde va el dato."""
+    t = Table([celdas], colWidths=anchos)
+    estilo = [('VALIGN', (0, 0), (-1, -1), 'BOTTOM'),
+              ('LEFTPADDING', (0, 0), (-1, -1), 0), ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+              ('TOPPADDING', (0, 0), (-1, -1), arriba), ('BOTTOMPADDING', (0, 0), (-1, -1), 1)]
+    estilo += [('LINEBELOW', (i, 0), (i, 0), 0.5, colors.black) for i in subrayar]
+    t.setStyle(TableStyle(estilo))
     return t
 
 
-def _por_solicitar(items):
-    return [x['solicitar'].strip() for x in items if (x.get('solicitar') or '').strip()]
+def _marcas_opciones(id_, item):
+    marcadas = [str(o).upper().strip() for o in item.get('opciones') or []]
+    partes, usadas = [], set()
+    for opcion in cr.OPCIONES[id_]:
+        clave = opcion.split()[0]   # 'OTROS GASTOS' → 'OTROS'
+        encontrada = [m for m in marcadas if m.startswith(opcion) or clave in m]
+        usadas.update(encontrada)
+        partes.append(f'{opcion} {_casilla(bool(encontrada))}')
+    if id_ != 'mve_incrementables':
+        otras = [m for m in marcadas if m not in usadas]
+        partes.append('OTRAS ' + (_tinta(', '.join(otras)) if otras else '________'))
+    return '&nbsp;&nbsp;'.join(partes)
 
 
-def _caja_solicitar(pedir, e, ancho, titulo='Por favor solicitar'):
-    if not pedir:
-        return []
-    estilo = ParagraphStyle('solicitar', parent=e['celda'], textColor=colors.HexColor('#8a3a10'))
-    texto = f'<b>{titulo}:</b> ' + '; '.join(escape(x) for x in pedir)
-    t = Table([[Paragraph(texto, estilo)]], colWidths=[ancho])
-    t.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, -1), NARANJA_CLARO),
-                           ('BOX', (0, 0), (-1, -1), 0.6, colors.HexColor('#f6c9ad'))]))
-    return [Spacer(1, 6), t]
-
-
-def _veredicto_valor(rv, e, ancho):
-    if not rv.get('evaluado'):
-        texto, color = 'Riesgo de valor: NO VERIFICABLE · determínalo con la tabla', COLORES_RESPUESTA['no_verificable']
-    elif rv['pasa']:
-        texto, color = (f"Riesgo de valor: PASA · omisión estimada {_pesos(rv['omision'])} "
-                        f"de un máximo de {_pesos(rv['importe_maximo'])}"), VERDE
+def _pregunta(id_, item, f, ancho):
+    """Renglón de una pregunta: etiqueta, casillas y, debajo, la evidencia."""
+    respuesta = item.get('respuesta')
+    etiqueta = escape(ETIQUETAS_FORMATO.get(id_, cr.PREGUNTAS.get(id_, id_)))
+    if id_ in cr.OPCIONES:
+        texto = f'{etiqueta}: {_marcas_opciones(id_, item)}{_aviso(respuesta)}'
+        filas = [_renglon([Paragraph(texto, f['texto'])], [ancho])]
     else:
-        texto, color = (f"Riesgo de valor: NO PASA · omisión estimada {_pesos(rv['omision'])} rebasa "
-                        f"el máximo de {_pesos(rv['importe_maximo'])} · NOTIFICAR AL GERENTE"), ROJO
-    t = Table([[_p(texto, e['blanco'])]], colWidths=[ancho])
-    t.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, -1), color),
-                           ('TOPPADDING', (0, 0), (-1, -1), 6), ('BOTTOMPADDING', (0, 0), (-1, -1), 6)]))
-    return t
+        marcas = (f'{_casilla(respuesta == "si")} SI &nbsp;&nbsp;{_casilla(respuesta == "no")} NO'
+                  f'{_aviso(respuesta)}')
+        filas = [_renglon([Paragraph(f'{etiqueta}:', f['texto']), Paragraph(marcas, f['texto'])],
+                          [ancho * 0.66, ancho * 0.34])]
+    if item.get('detalle'):
+        filas.append(Paragraph(escape(item['detalle']), f['evidencia']))
+    return [KeepTogether(filas)]
 
 
-def _riesgo_valor(rv, e, ancho):
+def _por_favor_solicitar(items, f, ancho):
+    pedir = '; '.join(x['solicitar'].strip() for x in items if (x.get('solicitar') or '').strip())
+    return _renglon([Paragraph('Por favor solicitar:', f['texto']),
+                     Paragraph(_tinta(pedir) if pedir else '', f['texto']), ''],
+                    [ancho * 0.18, ancho * 0.62, ancho * 0.20], subrayar=(1,), arriba=6)
+
+
+def _encabezado_seccion(titulo, nota, f, ancho):
+    if not nota:
+        return [Spacer(1, 10), _renglon([Paragraph(escape(titulo), f['seccion'])], [ancho])]
+    return [Spacer(1, 10), _renglon([Paragraph(escape(titulo), f['seccion']),
+                                     Paragraph(escape(nota), f['nota'])],
+                                    [ancho * 0.68, ancho * 0.32])]
+
+
+def _seccion_valor(rv, f, ancho):
+    p = cr.parametros_valor()
+    story = [Spacer(1, 10), _renglon(
+        [Paragraph('1.- REVISION DE RIESGO DEL VALOR TABLA ART. 165 FRACCION II INCISO a)',
+                   ParagraphStyle('f_seccion1', parent=f['seccion'], fontSize=8.5)),
+         Paragraph(f'IMPORTE MAXIMO DE OMISION: {_pesos(rv["importe_maximo"])} pesos', f['nota'])],
+        [ancho * 0.60, ancho * 0.40]), Spacer(1, 6)]
+
     tabla = rv['tabla']
-    tasas_pedimento = set(rv.get('tasas') or [])
-    referencia = cr.parametros_valor()['tasa_referencia']
-    derecha = ParagraphStyle('derecha', parent=e['celda'], alignment=2)
+    tasas = set(rv.get('tasas') or [])
+    num = lambda v: Paragraph(v, f['tabla'])
     filas = [
-        [_p('Tasa', e['celda_b'])] + [_p(f"{f['tasa']:g}%", e['celda_b']) for f in tabla],
-        [_p('IVA + DTA', e['celda'])] + [_p(f"{f['omitido'] - f['diferencia']:.2f}%", derecha) for f in tabla],
-        [_p(f'Dif. para {referencia:g}%', e['celda'])] + [_p(f"{f['diferencia']:g}%", derecha) for f in tabla],
-        [_p('Total omitido', e['celda'])] + [_p(f"{f['omitido']:.0f}%", derecha) for f in tabla],
-        [_p('Valor máx. MXN', e['celda_b'])] + [_p(f"{f['valor_maximo']:,.2f}", derecha) for f in tabla],
+        [Paragraph('<b>Tasa</b>', f['tabla_izq'])] + [Paragraph(f"<b>{t['tasa']:g}%</b>", f['tabla']) for t in tabla],
+        [Paragraph('Tasa + IVA y dta', f['tabla_izq'])] + [num(f"{t['omitido'] - t['diferencia']:.4f}%") for t in tabla],
+        [Paragraph(f"dif para {p['tasa_referencia']:g}%", f['tabla_izq'])] + [num(f"{t['diferencia']:g}%") for t in tabla],
+        [Paragraph('total omitido', f['tabla_izq'])] + [num(f"{t['omitido']:.0f}%") for t in tabla],
+        [Paragraph('Valor merc', f['tabla_izq'])] + [num(_pesos(t['valor_maximo'])) for t in tabla],
     ]
     if tabla and tabla[0]['valor_maximo_usd'] is not None:
-        filas.append([_p('Valor máx. USD', e['celda'])]
-                     + [_p(f"{f['valor_maximo_usd']:,.2f}", derecha) for f in tabla])
+        filas.append([Paragraph('usd x tipo de cambio', f['tabla_izq'])]
+                     + [num(_pesos(t['valor_maximo_usd'])) for t in tabla])
     t = Table(filas, colWidths=[ancho * 0.16] + [ancho * 0.12] * len(tabla))
-    estilo = [('GRID', (0, 0), (-1, -1), 0.3, colors.HexColor('#d1d5db')),
-              ('BACKGROUND', (0, 0), (0, -1), GRIS_CLARO), ('BACKGROUND', (0, 0), (-1, 0), GRIS_CLARO),
+    estilo = [('GRID', (0, 0), (-1, -1), 0.4, colors.black),
               ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-              ('LEFTPADDING', (0, 0), (-1, -1), 3), ('RIGHTPADDING', (0, 0), (-1, -1), 3)]
-    for i, f in enumerate(tabla, start=1):
-        if f['tasa'] in tasas_pedimento:
-            estilo += [('BACKGROUND', (i, 0), (i, -1), NARANJA_CLARO), ('BOX', (i, 0), (i, -1), 1.2, NARANJA)]
+              ('LEFTPADDING', (0, 0), (-1, -1), 2), ('RIGHTPADDING', (0, 0), (-1, -1), 2),
+              ('TOPPADDING', (0, 0), (-1, -1), 1.5), ('BOTTOMPADDING', (0, 0), (-1, -1), 1.5)]
+    for i, fila in enumerate(tabla, start=1):
+        if fila['tasa'] in tasas:
+            estilo += [('BACKGROUND', (i, 0), (i, -1), colors.HexColor('#e8eef6')),
+                       ('BOX', (i, 0), (i, -1), 1.4, colors.HexColor(TINTA))]
     t.setStyle(TableStyle(estilo))
-    story = [t, Spacer(1, 4),
-             _p(f'Cada columna es el valor de mercancía con el que, si debiera pagar {referencia:g}% de IGI, '
-                'la omisión llegaría al importe máximo. En naranja, las tasas declaradas en el pedimento.',
-                ParagraphStyle('nota', parent=e['celda'], textColor=colors.HexColor('#6b7280'))),
-             Spacer(1, 8)]
+    story += [t, Spacer(1, 6)]
 
     if rv.get('evaluado'):
-        filas = [[_p(x, e['blanco']) for x in ('Partida', 'Fracción', 'Tasa IGI', 'Valor en aduana',
-                                              'Omisión estimada')]]
+        tasas_txt = ', '.join(f'{x:g}%' for x in sorted(tasas))
+        determina = (f'Tasa(s) {tasas_txt} · valor en aduana {_pesos(rv["valor_total"])} · '
+                     f'omisión estimada {_pesos(rv["omision"])}')
+    else:
+        determina = 'No se pudieron leer las tasas y valores del pedimento: determinarlo con la tabla'
+    story.append(_renglon([Paragraph('Señalar en cual se determina:', f['texto']),
+                           Paragraph(_tinta(determina), f['texto'])],
+                          [ancho * 0.27, ancho * 0.73], subrayar=(1,)))
+
+    if rv.get('evaluado') and len(rv['partidas']) > 1:
+        filas = [[Paragraph(f'<b>{x}</b>', f['tabla_izq']) for x in
+                  ('Partida', 'Fracción', 'Tasa', 'Valor en aduana', 'Omisión estimada')]]
         for d in rv['partidas']:
-            filas.append([_p(d.get('partida'), e['celda']), _p(d.get('fraccion'), e['celda']),
-                          _p(f"{d['tasa_igi']:g}%", derecha), _p(_pesos(d['valor_aduana']), derecha),
-                          _p(_pesos(d['omision']), derecha)])
-        negrita_derecha = ParagraphStyle('negrita_derecha', parent=e['celda_b'], alignment=2)
-        filas.append([_p('Total', e['celda_b']), '', '', _p(_pesos(rv['valor_total']), negrita_derecha),
-                      _p(_pesos(rv['omision']), negrita_derecha)])
-        t = Table(filas, colWidths=[ancho * 0.12, ancho * 0.22, ancho * 0.14, ancho * 0.26, ancho * 0.26],
-                  repeatRows=1)
-        t.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), AZUL),
-                               ('GRID', (0, 0), (-1, -1), 0.3, colors.HexColor('#d1d5db')),
-                               ('BACKGROUND', (0, -1), (-1, -1), GRIS_CLARO)]))
-        story += [t, Spacer(1, 6)]
-    story.append(_veredicto_valor(rv, e, ancho))
+            filas.append([Paragraph(escape(str(d.get('partida', ''))), f['tabla_izq']),
+                          Paragraph(escape(str(d.get('fraccion', ''))), f['tabla_izq']),
+                          num(f"{d['tasa_igi']:g}%"), num(_pesos(d['valor_aduana'])), num(_pesos(d['omision']))])
+        t = Table(filas, colWidths=[ancho * 0.12, ancho * 0.22, ancho * 0.12, ancho * 0.22, ancho * 0.22],
+                  hAlign='LEFT', repeatRows=1)
+        t.setStyle(TableStyle([('LINEBELOW', (0, 0), (-1, 0), 0.5, colors.black),
+                               ('TOPPADDING', (0, 0), (-1, -1), 1), ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
+                               ('LEFTPADDING', (0, 0), (-1, -1), 2)]))
+        story += [Spacer(1, 4), t]
+
+    pasa = rv.get('pasa')
+    marca = lambda si: Paragraph(_tinta('X') if si else '', f['texto'])
+    story.append(_renglon(
+        [Paragraph('Señalar', f['texto']), Paragraph('SI Pasa:', f['texto']), marca(pasa is True),
+         Paragraph('No Pasa:', f['texto']), marca(pasa is False),
+         Paragraph('Notificar al Gerente:', f['texto']), marca(pasa is False),
+         Paragraph('' if rv.get('evaluado') else '<font size="7" color="#b45309"><b>NO VERIFICABLE</b></font>',
+                   f['texto'])],
+        [ancho * 0.10, ancho * 0.09, ancho * 0.12, ancho * 0.09, ancho * 0.12, ancho * 0.19, ancho * 0.12,
+         ancho * 0.17],
+        subrayar=(2, 4, 6), arriba=8))
     return story
 
 
 def _hoja_control_riesgos(c, e, ancho, pedimento, fecha):
+    f = _estilos_formato()
     enc = c.get('encabezado') or {}
     rv = c.get('riesgo_valor') or cr.calcular_riesgo_valor([])
     respuestas = {x.get('pregunta'): x for x in c.get('respuestas') or []}
+    item = lambda id_: respuestas.get(id_) or {'pregunta': id_, 'respuesta': 'no_verificable', 'detalle': ''}
+    dato = lambda v: Paragraph(_tinta(v) if v else '', f['texto'])
+    etq = lambda t: Paragraph(t, f['negrita'])
 
-    story = [Paragraph('Revisión de control de riesgos del embarque', e['titulo']),
-             Paragraph(f'Pedimento {escape(pedimento)} · {fecha}', e['subtitulo']), Spacer(1, 10)]
+    story = [Paragraph('REVISION DE CONTROL DE RIESGOS DEL EMBARQUE', f['titulo']), Spacer(1, 8),
+             _renglon([etq('REFERENCIA'), dato(enc.get('referencia')), '', etq('FECHA Y HORA:'), dato(fecha)],
+                      [ancho * 0.15, ancho * 0.33, ancho * 0.07, ancho * 0.17, ancho * 0.28], subrayar=(1, 4)),
+             _renglon([etq('PEDIMENTO'), dato(pedimento), ''], [ancho * 0.15, ancho * 0.33, ancho * 0.52],
+                      subrayar=(1,)),
+             _renglon([Paragraph(
+                 f'CONTENEDORES {_casilla(enc.get("contenedores"))} CANTIDAD '
+                 f'<u>&nbsp;{_tinta(enc.get("cantidad_contenedores") or "") if enc.get("contenedores") else "&nbsp;&nbsp;&nbsp;"}&nbsp;</u>'
+                 f' &nbsp;CARGA SUELTA {_casilla(enc.get("carga_suelta"))}', f['texto'])], [ancho], arriba=6),
+             _renglon([Paragraph('NOMBRE DEL IMPORTADOR:', f['texto']), dato(enc.get('importador')), ''],
+                      [ancho * 0.27, ancho * 0.48, ancho * 0.25], subrayar=(1,), arriba=6),
+             _renglon([Paragraph('VALOR FACTURA:', f['texto']), dato(enc.get('valor_factura')), ''],
+                      [ancho * 0.18, ancho * 0.52, ancho * 0.30], subrayar=(1,), arriba=6)]
 
-    if enc.get('contenedores'):
-        embarque = f"Contenedores: {enc.get('cantidad_contenedores') or 'sí'}"
-    else:
-        embarque = 'Contenedores: no'
-    embarque += ' · Carga suelta: ' + ('sí' if enc.get('carga_suelta') else 'no')
-    pares = [('Referencia', enc.get('referencia')), ('Pedimento', pedimento),
-             ('Importador', enc.get('importador')), ('Valor factura', enc.get('valor_factura')),
-             ('Embarque', embarque), ('Fecha y hora', fecha)]
-    filas = [[_p(a, e['celda_b']), _p(b, e['celda']), _p(x, e['celda_b']), _p(y, e['celda'])]
-             for (a, b), (x, y) in zip(pares[::2], pares[1::2])]
-    t = Table(filas, colWidths=[ancho * 0.15, ancho * 0.35] * 2)
-    t.setStyle(TableStyle([('GRID', (0, 0), (-1, -1), 0.4, colors.HexColor('#d1d5db')),
-                           ('BACKGROUND', (0, 0), (0, -1), GRIS_CLARO),
-                           ('BACKGROUND', (2, 0), (2, -1), GRIS_CLARO),
-                           ('VALIGN', (0, 0), (-1, -1), 'TOP')]))
-    story += [t, Spacer(1, 8), _veredicto_valor(rv, e, ancho)]
-    story += _caja_solicitar(_por_solicitar(respuestas.values()), e, ancho,
-                             'Por favor solicitar (todas las secciones)')
+    pago = item('comprobante_pago')
+    pago_txt = pago.get('detalle') if pago.get('respuesta') == 'si' else ''
+    story += [_renglon([Paragraph('ANEXA IMPORTE DEL COMPROBANTE DE PAGO AL PROVEEDOR:', f['texto']),
+                        dato(pago_txt), Paragraph('SOLICITARLO:', f['texto']),
+                        dato(pago.get('solicitar') or '')],
+                       [ancho * 0.53, ancho * 0.15, ancho * 0.14, ancho * 0.18], subrayar=(1, 3), arriba=6)]
+    if pago.get('respuesta') != 'si' and pago.get('detalle'):
+        story.append(Paragraph(escape(pago['detalle']), f['evidencia']))
+    story += _pregunta('orden_compra', item('orden_compra'), f, ancho)
+    notas = '; '.join(x['solicitar'].strip() for x in (item('orden_compra'), item('contrato'))
+                      if (x.get('solicitar') or '').strip())
+    story.append(_renglon([Paragraph('NOTAS:', f['texto']), dato(notas)], [ancho * 0.09, ancho * 0.91],
+                          subrayar=(1,), arriba=6))
+    story += [Spacer(1, 6)] + _pregunta('contrato', item('contrato'), f, ancho)
+
+    story += _seccion_valor(rv, f, ancho)
 
     for id_seccion, titulo, nota, preguntas in cr.SECCIONES:
-        items = [respuestas.get(id_) or {'pregunta': id_, 'respuesta': 'no_verificable', 'detalle': ''}
-                 for id_, _ in preguntas]
-        story.append(Paragraph(escape(titulo) + (f' <font size="9" color="#6b7280">· {escape(nota)}</font>'
-                                                 if nota else ''), e['h2']))
-        story += [_tabla_preguntas(items, e, ancho)] + _caja_solicitar(_por_solicitar(items), e, ancho)
         if id_seccion == 'documentos_compra':
-            story.append(Paragraph(
-                '1. Riesgo del valor · art. 165 fracc. II inciso a) '
-                f'<font size="9" color="#6b7280">· Importe máximo de omisión {_pesos(rv["importe_maximo"])}</font>',
-                e['h2']))
-            story += _riesgo_valor(rv, e, ancho)
+            continue
+        items = [item(id_) for id_, _ in preguntas]
+        story += _encabezado_seccion(titulo, nota, f, ancho)
+        for id_, _ in preguntas:
+            story += _pregunta(id_, item(id_), f, ancho)
+        story.append(_por_favor_solicitar(items, f, ancho))
     return story
