@@ -67,8 +67,8 @@ LISTA_VERIFICACION = [
 
     # Transporte
     ('documento_transporte', 'Documento de transporte',
-     'Número de BL/guía (master y house), transportista y su RFC contra BL, Delivery Order y '
-     'factura.'),
+     'Número de BL master o guía master, transportista y su RFC contra el BL master, Delivery '
+     'Order y factura. El BL house no se revisa (ver REGLAS DEL BL).'),
     ('medio_transporte', 'Medio de transporte',
      'Nombre del buque, número y dirección de viaje y bandera del pedimento contra BL, Delivery '
      'Order y factura. Si los documentos soporte mencionan buques distintos, repórtalo aunque el '
@@ -201,6 +201,13 @@ exportador (campo 12), con campos obligatorios vacíos, sin la leyenda requerida
 cuyas mercancías, partida o cantidad no corresponden a lo declarado invalida la preferencia: es \
 critica. Defectos de forma que no impiden relacionar el certificado con la mercancía (p. ej. \
 espacio en blanco sin cancelar, domicilio incompleto) son media.""",
+    'BL': """Solo se revisa el BL master (master bill of lading / guía master: el que emite la naviera o aerolínea). El BL house (house bill of lading, guía house o hija: el que emite el agente de carga o NVOCC) se ignora por completo:
+- Toda referencia a "BL" en la lista de verificación significa el BL master.
+- No compares datos contra el BL house ni generes hallazgos a partir de él, aunque se haya proporcionado o aunque contradiga al pedimento o a otros documentos.
+- No verifiques el número de guía house declarado en el pedimento, ni reportes que falta el BL house o que no se proporcionó.
+- Si se proporcionó un BL house, regístralo en `documentos` indicando que es house y que se ignoró; no lo uses como fuente de ningún dato.
+- Para distinguirlos: el master lo emite el transportista (naviera o aerolínea) y su embarcador suele ser el agente de carga; el house lo emite el agente de carga y su embarcador suele ser el proveedor. Busca las leyendas "MASTER", "HOUSE", "MBL", "HBL", "MAWB" o "HAWB".
+- Si solo hay un BL y no se puede saber si es master o house, úsalo como BL master.""",
 }
 
 
