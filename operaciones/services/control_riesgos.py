@@ -181,8 +181,16 @@ son NOM-001, NOM-003 ni NOM-084 quedan como OTRAS. Anota cada NOM una sola vez a
 varias partidas.
 - comprobante_pago, orden_compra y contrato: casi nunca vienen en el expediente. Si no vienen, \
 responde no y en `solicitar` pide el documento. Si la factura o las cartas indican la forma de pago \
-(anticipo, carta de crédito, crédito), anótalo en `detalle`. En orden_compra compara número, valor \
-y precio unitario de la orden contra la factura; si no se relacionan, dilo.
+(anticipo, carta de crédito, crédito), anótalo en `detalle`.
+- orden_compra: si no hay orden de compra pero hay una proforma o cotización, revísala como orden \
+de compra y anota en `solicitar` "Confirmar si se toma la proforma como orden de compra". Compara \
+renglón por renglón cantidades, valor y precio unitario contra la factura, y verifica que ambas se \
+relacionen: que la factura cite el número de la orden o la orden el de la factura. Si no se \
+relacionan por número, si algún renglón no viene desglosado igual que en la factura (indica cuáles) \
+o si no cuadran valor o precio, responde no y anota qué aclarar.
+- contrato: además de que exista, verifica que el nombre y el domicilio del comprador coincidan con \
+el pedimento y la factura, y que la fecha del contrato sea anterior o igual a la de la factura. Un \
+contrato con domicilio distinto o con fecha posterior a la factura se responde no, indicando por qué.
 - datos_importador: compara RFC, razón social y sobre todo el domicilio del importador entre el \
 pedimento, la factura, el BL y la CSF (si viene). Si el domicilio no coincide, responde no y \
 solicita aclararlo (p. ej. "Confirmar domicilio: no coincide el del pedimento con el de la CSF").
