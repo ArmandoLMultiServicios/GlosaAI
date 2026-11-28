@@ -151,8 +151,10 @@ def texto_instrucciones():
         for _, titulo, _, lista in SECCIONES)
     return f"""\
 Además de la glosa, llena la REVISIÓN DE CONTROL DE RIESGOS DEL EMBARQUE en `control_riesgos`:
-- `encabezado`: referencia de la operación (si aparece), si viene en contenedores y cuántos, si es \
-carga suelta, nombre del importador y valor de la factura con su moneda.
+- `encabezado`: referencia de la operación (viene impresa en la parte superior del pedimento, p. ej. \
+"Referencia:26IZ-4610"), si viene en contenedores y cuántos, si es carga suelta, nombre del \
+importador y valor de la factura: el valor en dólares del pedimento (suma de todas las facturas), \
+p. ej. "90,500.00 USD".
 - `partidas`: por cada partida del pedimento, su número, fracción arancelaria, tasa de IGI ad \
 valorem declarada en % (0 si está exenta o tiene preferencia al 0) y valor en aduana en MXN. El \
 sistema calcula con eso el riesgo de valor del art. 165 fracc. II inciso a); no hagas tú la cuenta.
@@ -163,8 +165,38 @@ está en los documentos (p. ej. el listado de no previo o un documento que no se
 puede saber si existe); no_aplica si la pregunta no corresponde a la operación (p. ej. el \
 certificado de origen cuando no hay preferencia). En `detalle` anota la evidencia (documento, \
 página, NOM, importe). En `solicitar` anota qué documento hay que pedir al cliente; vacío si nada.
-  En `opciones` anota: para nom_etiquetado y nom_seguridad, cada NOM que lleva la mercancía con su clave corta (p. ej. "NOM-050", "NOM-004"); para mve_incrementables, cuáles de "FLETE", "SEGURO" y "OTROS GASTOS" vienen desglosados en la factura. Para las demás preguntas deja la lista vacía.
-- "Mes en curso" es el mes de la fecha de hoy que se indica en el mensaje.\
+  En `opciones` anota: para nom_etiquetado y nom_seguridad, cada NOM que lleva la mercancía con su \
+clave corta (p. ej. "NOM-050", "NOM-001"); para mve_incrementables, cuáles de "FLETE", "SEGURO" y \
+"OTROS GASTOS" vienen desglosados en la factura. Para las demás preguntas deja la lista vacía.
+- "Mes en curso" es el mes de la fecha de hoy que se indica en el mensaje.
+
+Cómo llena la agencia este formato (síguelo):
+- NOMs: tómalas del bloque "Regulaciones y restricciones no arancelarias" de cada partida del \
+pedimento (claves NM, N3, etc.) y de los certificados. Son de etiquetado (nom_etiquetado) las de \
+información comercial: NOM-024-SCFI, NOM-050-SCFI, NOM-051, NOM-004-SE (textiles), NOM-015-SCFI \
+(juguetes), NOM-020-SCFI, NOM-141-SSA1 y similares. Todas las demás (seguridad eléctrica como \
+NOM-001-SCFI y NOM-003-SCFI, eficiencia energética NOM-0xx-ENER, telecomunicaciones como \
+NOM-208, NOM-218 o NOM-221, NOM-019, NOM-016, NOM-196, etc.) van en nom_seguridad; las que no \
+son NOM-001, NOM-003 ni NOM-084 quedan como OTRAS. Anota cada NOM una sola vez aunque se repita en \
+varias partidas.
+- comprobante_pago, orden_compra y contrato: casi nunca vienen en el expediente. Si no vienen, \
+responde no y en `solicitar` pide el documento. Si la factura o las cartas indican la forma de pago \
+(anticipo, carta de crédito, crédito), anótalo en `detalle`. En orden_compra compara número, valor \
+y precio unitario de la orden contra la factura; si no se relacionan, dilo.
+- datos_importador: compara RFC, razón social y sobre todo el domicilio del importador entre el \
+pedimento, la factura, el BL y la CSF (si viene). Si el domicilio no coincide, responde no y \
+solicita aclararlo (p. ej. "Confirmar domicilio: no coincide el del pedimento con el de la CSF").
+- csf_mes, csf_giro y opinion_cumplimiento: los revisa el área legal con sus propios archivos. Si \
+la CSF o la opinión no vienen en el expediente, responde no_verificable y deja `solicitar` vacío.
+- listado_no_previo: no viene en los documentos; responde no_verificable salvo que el expediente lo \
+indique.
+- preferencia_certificado: si la preferencia se aplica con la leyenda de exportador autorizado en \
+la factura (sin certificado aparte), responde no y anótalo en `detalle` ("leyenda en factura").
+- mve_incrementables y mve_comprobante: si el INCOTERM no incluye el flete o el seguro hasta México \
+(EXW, FCA, FOB, FAS) y el pedimento no los declara como incrementables, o si se declaran pero no \
+hay factura que los desglose, solicita "Factura y comprobante de pago" del flete, seguro u otros \
+incrementables. El comprobante de fecha de pago de incrementables casi nunca viene: si no está, \
+responde no y solicítalo.\
 """
 
 
